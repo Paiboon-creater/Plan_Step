@@ -1,12 +1,10 @@
 <?
 function doGet() {
-  return HtmlService.createHtmlOutput(getHtmlContent())
+  return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('ระบบบันทึกแผนงาน (Plan Step)')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
-
-function getHtmlContent() {
-  return `
+?>
 <!DOCTYPE html>
 <html lang="th">
 <head>
@@ -19,21 +17,16 @@ function getHtmlContent() {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <style>
-        /* ธีมกระดานหุ้น สีฟ้าเขียว (Cyan/Teal) */
         :root {
             --bg-dark-blue: #041421;
             --card-teal: #082f49;
             --border-cyan: #06b6d4;
-            
-            /* สีอักษรฟอร์ม สีฟ้าอ่อน */
             --text-light-blue: #7dd3fc;
             --text-cyan: #22d3ee;
             --text-white: #f0f9ff;
             --text-red: #fb7185;
             --text-yellow: #fde047;
-            
-            /* สีตารางตัวหนังสือสีเข้ม */
-            --table-bg: #f0fdfa; /* พื้นหลังสว่าง */
+            --table-bg: #f0fdfa;
             --table-text-dark: #0f172a;
             --table-th-bg: #ccfbf1;
         }
@@ -82,7 +75,6 @@ function getHtmlContent() {
             color: #475569;
         }
 
-        /* กล่องแสดงข้อมูลออเดอร์อัตโนมัติ */
         .order-info-box {
             background-color: #021a2c;
             border-left: 4px solid var(--text-cyan);
@@ -99,7 +91,6 @@ function getHtmlContent() {
         .btn-outline-cyan { border: 1px solid var(--text-cyan); color: var(--text-cyan); font-weight: bold;}
         .btn-outline-cyan:hover { background-color: var(--text-cyan); color: var(--bg-dark-blue); }
 
-        /* ส่วนของตาราง (ตัวหนังสือสีเข้ม พื้นสว่าง) */
         #tableSection { display: none; }
         .table-wrapper {
             background-color: var(--table-bg);
@@ -131,7 +122,6 @@ function getHtmlContent() {
 <div class="container">
     <h2 class="stock-header">📈 ระบบบันทึกแผนงาน (Plan Step)</h2>
     
-    <!-- ฟอร์มบันทึกข้อมูล -->
     <div class="card card-stock">
         <form id="stepForm">
             <input type="hidden" id="edit_mode" value="false">
@@ -151,7 +141,6 @@ function getHtmlContent() {
                 </div>
             </div>
 
-            <!-- กล่องแสดงวันที่และรหัสชิ้นงานของออเดอร์ -->
             <div id="orderInfo" class="order-info-box">
                 <div class="row">
                     <div class="col-md-12 order-info-text mb-2 border-bottom border-secondary pb-2">
@@ -184,14 +173,12 @@ function getHtmlContent() {
         </form>
     </div>
 
-    <!-- ปุ่มเปิดตาราง -->
     <div class="text-center mb-4" id="showTableBtnContainer">
         <button class="btn btn-outline-cyan px-4 py-2" onclick="showTableSection()">
             📊 โหลดข้อมูลตารางตรวจสอบ
         </button>
     </div>
 
-    <!-- ส่วนตารางข้อมูล (ตัวหนังสือสีเข้ม) -->
     <div id="tableSection">
         <div class="table-wrapper">
             <h5 style="color: var(--table-text-dark); font-weight: bold; margin-bottom: 15px;">ตารางข้อมูลรายการ</h5>
@@ -229,41 +216,34 @@ function getHtmlContent() {
 </div>
 
 <script>
-    // ==========================================
-    // 1. ตั้งค่า API Supabase และตัวแปรระบบ
-    // ==========================================
     const BASE_URL = 'https://siiiifesdjuunwmwozfb.supabase.co/rest/v1';
     const SUPABASE_KEY = 'sb_publishable_ohToE8Z_Fzo87uBtzdPDIg_cqHCi3HT';
-    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': \`Bearer \${SUPABASE_KEY}\`, 'Content-Type': 'application/json' };
+    const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json' };
 
     let refData = { orders: {}, steps: {}, targets: [], works: {} };
     let tableData = []; 
 
-    // ==========================================
-    // 2. เริ่มต้นระบบ (Init)
-    // ==========================================
     window.onload = async function() {
         document.getElementById('start_date').valueAsDate = new Date();
         Swal.fire({ title: 'เชื่อมต่อฐานข้อมูล...', background: '#082f49', color: '#22d3ee', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
         try {
-            // ดึงข้อมูล Master
             const [orders, steps, targets, works] = await Promise.all([
-                fetch(\`\${BASE_URL}/orders?select=id_order,order_no,id_work,start_date,end_date\`, { headers }).then(r => r.json()),
-                fetch(\`\${BASE_URL}/production_steps?select=id_step,step_name\`, { headers }).then(r => r.json()),
-                fetch(\`\${BASE_URL}/targets?select=id_work,id_step\`, { headers }).then(r => r.json()),
-                fetch(\`\${BASE_URL}/work_items?select=id_work,work_code\`, { headers }).then(r => r.json())
+                fetch(`${BASE_URL}/orders?select=id_order,order_no,id_work,start_date,end_date`, { headers }).then(r => r.json()),
+                fetch(`${BASE_URL}/production_steps?select=id_step,step_name`, { headers }).then(r => r.json()),
+                fetch(`${BASE_URL}/targets?select=id_work,id_step`, { headers }).then(r => r.json()),
+                fetch(`${BASE_URL}/work_items?select=id_work,work_code`, { headers }).then(r => r.json())
             ]);
 
             const selectOrder = document.getElementById('id_order');
             const filterOrder = document.getElementById('filter_order');
             
-            selectOrder.innerHTML = \`<option value="">-- เลือกใบสั่ง --</option>\`;
-            filterOrder.innerHTML = \`<option value="">-- แสดงทั้งหมด --</option>\`;
+            selectOrder.innerHTML = `<option value="">-- เลือกใบสั่ง --</option>`;
+            filterOrder.innerHTML = `<option value="">-- แสดงทั้งหมด --</option>`;
             
             orders.forEach(o => {
                 refData.orders[o.id_order] = o;
-                let optStr = \`<option value="\${o.id_order}">\${o.order_no}</option>\`;
+                let optStr = `<option value="${o.id_order}">${o.order_no}</option>`;
                 selectOrder.innerHTML += optStr;
                 filterOrder.innerHTML += optStr;
             });
@@ -278,51 +258,43 @@ function getHtmlContent() {
         }
     };
 
-    // ==========================================
-    // 3. แสดงวันที่, รหัสชิ้นงาน และ ดึงขั้นตอนทำงาน
-    // ==========================================
     function onOrderSelect() {
         const orderId = document.getElementById('id_order').value;
         const infoBox = document.getElementById('orderInfo');
         const selectStep = document.getElementById('id_step');
         
-        selectStep.innerHTML = \`<option value="">-- เลือกขั้นตอน --</option>\`;
+        selectStep.innerHTML = `<option value="">-- เลือกขั้นตอน --</option>`;
 
         if (orderId && refData.orders[orderId]) {
             const orderInfo = refData.orders[orderId];
             const workCode = refData.works[orderInfo.id_work] || 'ไม่พบรหัสชิ้นงาน';
             
-            // แสดงข้อมูลวันที่และรหัสชิ้นงานของใบสั่ง
             document.getElementById('display_work_code').innerText = workCode;
             document.getElementById('display_order_start').innerText = orderInfo.start_date || 'ไม่ระบุ';
             document.getElementById('display_order_end').innerText = orderInfo.end_date || 'ไม่ระบุ';
             infoBox.style.display = 'block';
 
-            // ค้นหาขั้นตอนทำงาน ที่มีความสัมพันธ์กับ id_work ของใบสั่ง
             if (orderInfo.id_work) {
                 const validSteps = refData.targets.filter(t => t.id_work === orderInfo.id_work);
                 const uniqueStepIds = [...new Set(validSteps.map(t => t.id_step))];
                 
                 if(uniqueStepIds.length > 0) {
                     uniqueStepIds.forEach(stepId => {
-                        let stepName = refData.steps[stepId] || \`Step ID: \${stepId}\`;
-                        selectStep.innerHTML += \`<option value="\${stepId}">\${stepName}</option>\`;
+                        let stepName = refData.steps[stepId] || `Step ID: ${stepId}`;
+                        selectStep.innerHTML += `<option value="${stepId}">${stepName}</option>`;
                     });
                 } else {
-                    selectStep.innerHTML = \`<option value="">-- ไม่พบขั้นตอนสำหรับใบสั่งนี้ --</option>\`;
+                    selectStep.innerHTML = `<option value="">-- ไม่พบขั้นตอนสำหรับใบสั่งนี้ --</option>`;
                 }
             } else {
-                selectStep.innerHTML = \`<option value="">-- ใบสั่งนี้ไม่มีข้อมูลรหัสชิ้นงาน --</option>\`;
+                selectStep.innerHTML = `<option value="">-- ใบสั่งนี้ไม่มีข้อมูลรหัสชิ้นงาน --</option>`;
             }
         } else {
             infoBox.style.display = 'none';
-            selectStep.innerHTML = \`<option value="">-- กรุณาเลือกใบสั่งก่อน --</option>\`;
+            selectStep.innerHTML = `<option value="">-- กรุณาเลือกใบสั่งก่อน --</option>`;
         }
     }
 
-    // ==========================================
-    // 4. บันทึก / แก้ไขข้อมูล และระบบ Auto-Filter
-    // ==========================================
     async function saveData() {
         const id_order = document.getElementById('id_order').value;
         const id_step = document.getElementById('id_step').value;
@@ -346,8 +318,7 @@ function getHtmlContent() {
 
         try {
             if (!isEditMode) {
-                // เช็คข้อมูลซ้ำ
-                const checkRes = await fetch(\`\${BASE_URL}/order_steps?id_order=eq.\${id_order}&id_step=eq.\${id_step}&select=id_order\`, { headers });
+                const checkRes = await fetch(`${BASE_URL}/order_steps?id_order=eq.${id_order}&id_step=eq.${id_step}&select=id_order`, { headers });
                 const existingData = await checkRes.json();
                 
                 if (existingData.length > 0) {
@@ -356,14 +327,13 @@ function getHtmlContent() {
                     return;
                 }
 
-                const res = await fetch(\`\${BASE_URL}/order_steps\`, {
+                const res = await fetch(`${BASE_URL}/order_steps`, {
                     method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' }, body: JSON.stringify(payload)
                 });
                 if (!res.ok) throw new Error('Save Failed');
             
             } else {
-                // โหมดแก้ไข
-                const res = await fetch(\`\${BASE_URL}/order_steps?id_order=eq.\${id_order}&id_step=eq.\${id_step}\`, {
+                const res = await fetch(`${BASE_URL}/order_steps?id_order=eq.${id_order}&id_step=eq.${id_step}`, {
                     method: 'PATCH', headers: { ...headers, 'Prefer': 'return=minimal' }, body: JSON.stringify({ start_date, end_date })
                 });
                 if (!res.ok) throw new Error('Update Failed');
@@ -372,17 +342,15 @@ function getHtmlContent() {
 
             Swal.fire({icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false, background: '#082f49', color: '#22d3ee'});
             
-            // ล้างวันที่ในฟอร์ม
             document.getElementById('start_date').value = '';
             document.getElementById('end_date').value = '';
 
-            // แสดงตารางและตั้ง Auto-Filter ทันที
             document.getElementById('showTableBtnContainer').style.display = 'none';
             document.getElementById('tableSection').style.display = 'block';
-            document.getElementById('filter_order').value = id_order; // กรองด้วยใบสั่งที่เพิ่งป้อน
+            document.getElementById('filter_order').value = id_order;
             
-            await loadTableDataRaw(); // โหลดข้อมูลใหม่
-            renderTable(); // แสดงผล
+            await loadTableDataRaw();
+            renderTable();
 
         } catch (e) {
             Swal.fire({icon: 'error', title: 'Error', text: 'เกิดข้อผิดพลาดในการประมวลผล', background: '#082f49', color: 'white'});
@@ -391,9 +359,6 @@ function getHtmlContent() {
         }
     }
 
-    // ==========================================
-    // 5. ระบบตาราง และ การดึงข้อมูล
-    // ==========================================
     function showTableSection() {
         document.getElementById('showTableBtnContainer').style.display = 'none';
         document.getElementById('tableSection').style.display = 'block';
@@ -401,7 +366,7 @@ function getHtmlContent() {
     }
 
     async function loadTableDataRaw() {
-        const res = await fetch(\`\${BASE_URL}/order_steps?select=*&order=start_date.desc\`, { headers });
+        const res = await fetch(`${BASE_URL}/order_steps?select=*&order=start_date.desc`, { headers });
         tableData = await res.json();
     }
 
@@ -438,24 +403,21 @@ function getHtmlContent() {
             let stepName = refData.steps[row.id_step] || row.id_step;
 
             let tr = document.createElement('tr');
-            tr.innerHTML = \`
-                <td class="fw-bold" style="color: #0369a1;">\${orderNo}</td>
-                <td style="color: #0f766e;">\${workCode}</td>
-                <td>\${stepName}</td>
-                <td>\${row.start_date || '-'}</td>
-                <td style="color: #dc2626; font-weight: 500;">\${row.end_date || '-'}</td>
+            tr.innerHTML = `
+                <td class="fw-bold" style="color: #0369a1;">${orderNo}</td>
+                <td style="color: #0f766e;">${workCode}</td>
+                <td>${stepName}</td>
+                <td>${row.start_date || '-'}</td>
+                <td style="color: #dc2626; font-weight: 500;">${row.end_date || '-'}</td>
                 <td class="text-center">
-                    <button class="btn-action btn-edit" onclick="verifyPin(() => triggerEdit(\${row.id_order}, \${row.id_step}, '\${row.start_date}', '\${row.end_date}'))">แก้ไข</button>
-                    <button class="btn-action btn-delete" onclick="verifyPin(() => deleteRecord(\${row.id_order}, \${row.id_step}))">ลบ</button>
+                    <button class="btn-action btn-edit" onclick="verifyPin(() => triggerEdit(${row.id_order}, ${row.id_step}, '${row.start_date}', '${row.end_date}'))">แก้ไข</button>
+                    <button class="btn-action btn-delete" onclick="verifyPin(() => deleteRecord(${row.id_order}, ${row.id_step}))">ลบ</button>
                 </td>
-            \`;
+            `;
             tbody.appendChild(tr);
         });
     }
 
-    // ==========================================
-    // 6. การยืนยัน PIN 112233
-    // ==========================================
     async function verifyPin(actionCallback) {
         const { value: pin } = await Swal.fire({
             title: '🔒 ยืนยันตัวตน',
@@ -476,12 +438,9 @@ function getHtmlContent() {
         }
     }
 
-    // ==========================================
-    // 7. จัดการแก้ไข (Edit) และ ลบ (Delete)
-    // ==========================================
     function triggerEdit(id_order, id_step, start_date, end_date) {
         document.getElementById('id_order').value = id_order;
-        onOrderSelect(); // อัปเดต Dropdown ขั้นตอน และโชว์วันที่ใบสั่ง
+        onOrderSelect();
         
         setTimeout(() => {
             document.getElementById('id_step').value = id_step;
@@ -490,7 +449,6 @@ function getHtmlContent() {
         document.getElementById('start_date').value = start_date;
         document.getElementById('end_date').value = end_date;
         
-        // ล็อคการแก้ไข Key หลัก
         document.getElementById('id_order').disabled = true;
         document.getElementById('id_step').disabled = true;
         
@@ -507,7 +465,7 @@ function getHtmlContent() {
         document.getElementById('id_step').disabled = false;
         document.getElementById('id_order').value = '';
         
-        onOrderSelect(); // Reset
+        onOrderSelect();
         
         document.getElementById('start_date').value = '';
         document.getElementById('end_date').value = '';
@@ -532,7 +490,7 @@ function getHtmlContent() {
 
         if (confirmDelete.isConfirmed) {
             try {
-                const res = await fetch(\`\${BASE_URL}/order_steps?id_order=eq.\${id_order}&id_step=eq.\${id_step}\`, {
+                const res = await fetch(`${BASE_URL}/order_steps?id_order=eq.${id_order}&id_step=eq.${id_step}`, {
                     method: 'DELETE', headers: headers
                 });
                 if (res.ok) {
@@ -550,5 +508,3 @@ function getHtmlContent() {
 </script>
 </body>
 </html>
-  `;
-}
