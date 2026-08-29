@@ -150,13 +150,16 @@
             <!-- กล่องแสดงรหัสชิ้นงานและวันกำหนดเสร็จของใบสั่ง -->
             <div id="orderInfo" class="order-info-box">
                 <div class="row">
-                    <div class="col-md-12 order-info-text mb-2 border-bottom border-secondary pb-2">
-                        รหัสชิ้นงาน (Work Code): <span id="display_work_code" class="order-info-hl text-warning">-</span>
+                    <div class="col-md-6 order-info-text mb-2 border-bottom border-secondary pb-2">
+                        รหัสชิ้นงาน: <span id="display_work_code" class="order-info-hl text-warning">-</span>
                     </div>
-                    <div class="col-md-6 order-info-text">
+                    <div class="col-md-6 order-info-text mb-2 border-bottom border-secondary pb-2 text-md-end">
+                        จำนวนสั่งผลิต: <span id="display_order_qty" style="color: var(--neon-green); font-weight: bold; font-size: 1.1em;">-</span> ชิ้น
+                    </div>
+                    <div class="col-md-6 order-info-text mt-2">
                         วันเริ่มใบสั่ง: <span id="display_order_start" class="order-info-hl">-</span>
                     </div>
-                    <div class="col-md-6 order-info-text text-md-end">
+                    <div class="col-md-6 order-info-text mt-2 text-md-end">
                         กำหนดเสร็จใบสั่ง: <span id="display_order_end" class="order-info-hl text-danger">-</span>
                     </div>
                 </div>
@@ -242,9 +245,9 @@
         Swal.fire({ title: 'เชื่อมต่อฐานข้อมูล...', background: '#082f49', color: '#22d3ee', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
         try {
-            // ดึงข้อมูลพื้นฐานที่จำเป็นจาก Supabase
+            // เพิ่มการดึง quantity เข้ามาใน Query
             const [orders, steps, targets, works] = await Promise.all([
-                fetch(`${BASE_URL}/orders?select=id_order,order_no,id_work,start_date,end_date`, { headers }).then(r => r.json()),
+                fetch(`${BASE_URL}/orders?select=id_order,order_no,id_work,start_date,end_date,quantity`, { headers }).then(r => r.json()),
                 fetch(`${BASE_URL}/production_steps?select=id_step,step_name`, { headers }).then(r => r.json()),
                 fetch(`${BASE_URL}/targets?select=id_work,id_step`, { headers }).then(r => r.json()),
                 fetch(`${BASE_URL}/work_items?select=id_work,work_code`, { headers }).then(r => r.json())
@@ -269,7 +272,6 @@
 
             Swal.close();
 
-            // รองรับ Deep Linking / URL Parameter สำหรับแอพภายนอกเปิดลิงค์มา เช่น ?order_id=X
             const urlParams = new URLSearchParams(window.location.search);
             const paramOrderId = urlParams.get('order_id');
             if (paramOrderId && refData.orders[paramOrderId]) {
@@ -282,25 +284,39 @@
         }
     };
 
-    // เมื่อเลือกเลขที่ใบสั่ง ให้ดึงรหัสชิ้นงาน และวันกำหนดเสร็จมาโชว์ พร้อมกรองขั้นตอน (Step) ที่สัมพันธ์กัน
-    function onOrderSelect() {
+    // เมื่อเลือกเลขที่ใบสั่ง ให้ดึงรหัสชิ้นงาน จำนวน วันกำหนดเสร็จ พร้อมอัปเดตตารางเรียลไทม์
+    async function onOrderSelect() {
         const orderId = document.getElementById('id_order').value;
         const infoBox = document.getElementById('orderInfo');
         const selectStep = document.getElementById('id_step');
         
         selectStep.innerHTML = `<option value="">-- เลือกขั้นตอนการทำงาน --</option>`;
 
+        // 1. นำค่าใบสั่งไปใส่ในช่องกรองตารางด้านล่าง
+        document.getElementById('filter_order').value = orderId || "";
+
+        // 2. แสดงตารางและโหลดข้อมูลทันทีเพื่อโชว์แบบ Real-time
+        const tableSec = document.getElementById('tableSection');
+        if (orderId) {
+            tableSec.style.display = 'block';
+            if (!isTableLoaded) {
+                await loadTableDataRaw(); // โหลดเงียบๆ ไม่เด้ง Alert
+                isTableLoaded = true;
+            }
+        }
+        renderTable(); // อัปเดตตารางให้กรองเฉพาะ Order นี้
+
         if (orderId && refData.orders[orderId]) {
             const orderInfo = refData.orders[orderId];
             const workCode = refData.works[orderInfo.id_work] || 'ไม่พบรหัสชิ้นงาน';
             
-            // แสดงรหัสชิ้นงาน และ วันเริ่มต้น/กำหนดเสร็จของใบสั่ง
+            // แสดงข้อมูลรวมถึงจำนวนสั่งผลิต
             document.getElementById('display_work_code').innerText = workCode;
+            document.getElementById('display_order_qty').innerText = orderInfo.quantity ? Number(orderInfo.quantity).toLocaleString() : '-';
             document.getElementById('display_order_start').innerText = orderInfo.start_date || 'ไม่ระบุ';
             document.getElementById('display_order_end').innerText = orderInfo.end_date || 'ไม่ระบุ';
             infoBox.style.display = 'block';
 
-            // กรองขั้นตอนการทำงาน (Step) ที่มีความสัมพันธ์กับ id_work ของใบสั่งนี้ผ่านตาราง targets
             if (orderInfo.id_work) {
                 const validSteps = refData.targets.filter(t => t.id_work === orderInfo.id_work);
                 const uniqueStepIds = [...new Set(validSteps.map(t => t.id_step))];
@@ -322,7 +338,7 @@
         }
     }
 
-    // บันทึกข้อมูลลงตาราง orders_step (รองรับทั้ง Create และ Update)
+    // บันทึกข้อมูลลงตาราง orders_step
     async function saveData() {
         const id_order = document.getElementById('id_order').value;
         const id_step = document.getElementById('id_step').value;
@@ -346,7 +362,6 @@
 
         try {
             if (!isEditMode) {
-                // ตรวจสอบข้อมูลซ้ำ
                 const checkRes = await fetch(`${BASE_URL}/order_steps?id_order=eq.${id_order}&id_step=eq.${id_step}&select=id_order`, { headers });
                 const existingData = await checkRes.json();
                 
@@ -374,6 +389,7 @@
             document.getElementById('start_date').valueAsDate = new Date();
             document.getElementById('end_date').valueAsDate = new Date();
 
+            // อัปเดตตารางเรียลไทม์
             if (isTableLoaded) {
                 document.getElementById('filter_order').value = id_order;
                 await loadTableDataRaw();
@@ -387,7 +403,6 @@
         }
     }
 
-    // ซ่อน/แสดง ตารางข้อมูลเมื่อกดปุ่ม
     async function toggleTableSection() {
         const tableSec = document.getElementById('tableSection');
         if (tableSec.style.display === 'block') {
@@ -417,7 +432,6 @@
         }
     }
 
-    // เรนเดอร์ตารางพร้อมช่องกรองตามเลขที่ใบสั่ง
     function renderTable() {
         const filterVal = document.getElementById('filter_order').value;
         const tbody = document.getElementById('dataTableBody');
@@ -455,7 +469,6 @@
         });
     }
 
-    // ระบบถามรหัสผ่าน 112233 ก่อนแก้ไขหรือลบ
     async function verifyPin(actionCallback) {
         const { value: pin } = await Swal.fire({
             title: '🔒 ยืนยันตัวตน',
