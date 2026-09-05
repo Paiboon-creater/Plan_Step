@@ -339,22 +339,28 @@
             const selectOrder = document.getElementById('id_order');
             const filterOrder = document.getElementById('filter_order');
             
-            selectOrder.innerHTML = `<option value="">-- พิมพ์ค้นหา หรือเลือกใบสั่ง --</option>`;
+            selectOrder.innerHTML = `<option value="">-- พิมพ์ค้นหาเลขใบสั่ง หรือชื่อชิ้นงาน --</option>`;
             filterOrder.innerHTML = `<option value="">-- แสดงทั้งหมดทุกใบสั่ง --</option>`;
             
-            // เรียงลำดับข้อมูลเลขที่ใบสั่งจากน้อยไปมาก
-            orders.sort((a, b) => String(a.order_no || '').localeCompare(String(b.order_no || ''), 'th', { numeric: true }));
-
-            orders.forEach(o => {
-                refData.orders[o.id_order] = o;
-                let optStr = `<option value="${o.id_order}">${o.order_no}</option>`;
-                selectOrder.innerHTML += optStr;
-                filterOrder.innerHTML += optStr;
-            });
-
+            // เตรียมข้อมูล steps, works และ targets ไว้ให้พร้อมก่อน
             steps.forEach(s => refData.steps[s.id_step] = s.step_name);
             works.forEach(w => refData.works[w.id_work] = w.work_code);
             refData.targets = targets;
+
+            // แก้ไขข้อ 1: เรียงลำดับข้อมูลเลขที่ใบสั่งจาก "มากไปน้อย" (Z-A) เพื่อให้ใบล่าสุดขึ้นก่อน
+            orders.sort((a, b) => String(b.order_no || '').localeCompare(String(a.order_no || ''), 'th', { numeric: true }));
+
+            // แก้ไขข้อ 2: นำชื่อชิ้นงานมาโชว์ใน Dropdown เพื่อให้พิมพ์ค้นหาได้ง่ายขึ้น
+            orders.forEach(o => {
+                refData.orders[o.id_order] = o;
+                
+                // ดึงชื่อชิ้นงานมาต่อท้าย
+                let wCodeText = refData.works[o.id_work] ? ` | ${refData.works[o.id_work]}` : '';
+                let optStr = `<option value="${o.id_order}">${o.order_no}${wCodeText}</option>`;
+                
+                selectOrder.innerHTML += optStr;
+                filterOrder.innerHTML += optStr;
+            });
 
             // ผูกระบบ Tom Select สำหรับ Smart Dropdown
             orderSelectInstance = new TomSelect("#id_order", {
