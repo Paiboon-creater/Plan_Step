@@ -8,6 +8,9 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Tom Select (Smart Dropdown) -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.bootstrap5.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
     
     <style>
         :root {
@@ -71,7 +74,6 @@
             box-shadow: 0 0 12px rgba(6, 182, 212, 0.6);
         }
 
-        /* ปรับปุ่มให้อยู่ตรงกลางเวลาดูบนมือถือ */
         @media (max-width: 768px) {
             .home-btn {
                 position: static;
@@ -109,6 +111,21 @@
             box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
             outline: none;
         }
+
+        /* Custom Tom Select Dark Theme */
+        .ts-control, .ts-wrapper.single.input-active .ts-control {
+            background-color: var(--input-bg) !important;
+            border: 1px solid #0e7490 !important;
+            color: var(--text-light-blue) !important;
+            border-radius: 6px !important;
+            padding: 10px !important;
+        }
+        .ts-control > input { color: var(--text-white) !important; font-size: 1rem; }
+        .ts-dropdown { background-color: var(--input-bg) !important; border: 1px solid #0e7490 !important; color: var(--text-light-blue) !important; }
+        .ts-dropdown .option { padding: 8px 10px; }
+        .ts-dropdown .active { background-color: #0891b2 !important; color: white !important; }
+        .ts-control .item { color: var(--text-white) !important; }
+        .ts-wrapper.disabled .ts-control { opacity: 0.6; cursor: not-allowed; }
 
         .order-info-box {
             background-color: var(--input-bg);
@@ -177,7 +194,7 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">📝 เลขที่ใบสั่ง (Order No)</label>
-                    <select id="id_order" class="form-select form-select-stock" required onchange="onOrderSelect()">
+                    <select id="id_order" class="form-select" required>
                         <option value="">-- โหลดข้อมูลใบสั่ง --</option>
                     </select>
                 </div>
@@ -244,7 +261,7 @@
             <div class="filter-box d-flex justify-content-between align-items-end flex-wrap gap-2">
                 <div style="flex: 1; min-width: 250px;">
                     <label class="form-label mb-1 text-dark" style="font-size:0.85rem;">🔍 กรองข้อมูลตามเลขที่ใบสั่ง (Filter Order)</label>
-                    <select id="filter_order" class="form-select border-primary text-dark" onchange="renderTable()">
+                    <select id="filter_order" class="form-select">
                         <option value="">-- แสดงทั้งหมดทุกใบสั่ง --</option>
                     </select>
                 </div>
@@ -279,6 +296,7 @@
     let refData = { orders: {}, steps: {}, targets: [], works: {} };
     let tableData = []; 
     let isTableLoaded = false;
+    let orderSelectInstance, filterSelectInstance;
 
     window.onload = async function() {
         document.getElementById('start_date').valueAsDate = new Date();
@@ -287,7 +305,6 @@
         Swal.fire({ title: 'เชื่อมต่อฐานข้อมูล...', background: '#082f49', color: '#22d3ee', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
 
         try {
-            // เพิ่มการดึง quantity เข้ามาใน Query
             const [orders, steps, targets, works] = await Promise.all([
                 fetch(`${BASE_URL}/orders?select=id_order,order_no,id_work,start_date,end_date,quantity`, { headers }).then(r => r.json()),
                 fetch(`${BASE_URL}/production_steps?select=id_step,step_name`, { headers }).then(r => r.json()),
@@ -298,9 +315,12 @@
             const selectOrder = document.getElementById('id_order');
             const filterOrder = document.getElementById('filter_order');
             
-            selectOrder.innerHTML = `<option value="">-- เลือกเลขที่ใบสั่ง --</option>`;
+            selectOrder.innerHTML = `<option value="">-- พิมพ์ค้นหา หรือเลือกใบสั่ง --</option>`;
             filterOrder.innerHTML = `<option value="">-- แสดงทั้งหมดทุกใบสั่ง --</option>`;
             
+            // เรียงลำดับข้อมูลเลขที่ใบสั่งจากน้อยไปมาก
+            orders.sort((a, b) => String(a.order_no || '').localeCompare(String(b.order_no || ''), 'th', { numeric: true }));
+
             orders.forEach(o => {
                 refData.orders[o.id_order] = o;
                 let optStr = `<option value="${o.id_order}">${o.order_no}</option>`;
@@ -312,13 +332,25 @@
             works.forEach(w => refData.works[w.id_work] = w.work_code);
             refData.targets = targets;
 
+            // ผูกระบบ Tom Select สำหรับ Smart Dropdown
+            orderSelectInstance = new TomSelect("#id_order", {
+                create: false,
+                sortField: false,
+                onChange: function(value) { onOrderSelect(value); }
+            });
+
+            filterSelectInstance = new TomSelect("#filter_order", {
+                create: false,
+                sortField: false,
+                onChange: function() { renderTable(); }
+            });
+
             Swal.close();
 
             const urlParams = new URLSearchParams(window.location.search);
             const paramOrderId = urlParams.get('order_id');
             if (paramOrderId && refData.orders[paramOrderId]) {
-                selectOrder.value = paramOrderId;
-                onOrderSelect();
+                orderSelectInstance.setValue(paramOrderId);
             }
 
         } catch (error) {
@@ -327,26 +359,28 @@
     };
 
     // เมื่อเลือกเลขที่ใบสั่ง ให้ดึงรหัสชิ้นงาน จำนวน วันกำหนดเสร็จ พร้อมอัปเดตตารางเรียลไทม์
-    async function onOrderSelect() {
-        const orderId = document.getElementById('id_order').value;
+    async function onOrderSelect(orderId) {
         const infoBox = document.getElementById('orderInfo');
         const selectStep = document.getElementById('id_step');
+        const isEditMode = document.getElementById('edit_mode').value === 'true';
         
         selectStep.innerHTML = `<option value="">-- เลือกขั้นตอนการทำงาน --</option>`;
 
-        // 1. นำค่าใบสั่งไปใส่ในช่องกรองตารางด้านล่าง
-        document.getElementById('filter_order').value = orderId || "";
+        // 1. นำค่าใบสั่งไปใส่ในช่องกรองตารางด้านล่าง (หลีกเลี่ยง loop event)
+        if(filterSelectInstance && filterSelectInstance.getValue() !== orderId) {
+            filterSelectInstance.setValue(orderId || "", true);
+        }
 
         // 2. แสดงตารางและโหลดข้อมูลทันทีเพื่อโชว์แบบ Real-time
         const tableSec = document.getElementById('tableSection');
         if (orderId) {
             tableSec.style.display = 'block';
             if (!isTableLoaded) {
-                await loadTableDataRaw(); // โหลดเงียบๆ ไม่เด้ง Alert
+                await loadTableDataRaw(); 
                 isTableLoaded = true;
             }
         }
-        renderTable(); // อัปเดตตารางให้กรองเฉพาะ Order นี้
+        renderTable(); 
 
         if (orderId && refData.orders[orderId]) {
             const orderInfo = refData.orders[orderId];
@@ -358,6 +392,12 @@
             document.getElementById('display_order_start').innerText = orderInfo.start_date || 'ไม่ระบุ';
             document.getElementById('display_order_end').innerText = orderInfo.end_date || 'ไม่ระบุ';
             infoBox.style.display = 'block';
+
+            // โหลดวันที่เริ่มต้น และ วันที่เสร็จ จากใบสั่ง มาเป็นค่า Default (ถ้าไม่ได้อยู่ในโหมดแก้ไข)
+            if (!isEditMode) {
+                if (orderInfo.start_date) document.getElementById('start_date').value = orderInfo.start_date;
+                if (orderInfo.end_date) document.getElementById('end_date').value = orderInfo.end_date;
+            }
 
             if (orderInfo.id_work) {
                 const validSteps = refData.targets.filter(t => t.id_work === orderInfo.id_work);
@@ -380,7 +420,6 @@
         }
     }
 
-    // บันทึกข้อมูลลงตาราง orders_step
     async function saveData() {
         const id_order = document.getElementById('id_order').value;
         const id_step = document.getElementById('id_step').value;
@@ -428,12 +467,16 @@
 
             Swal.fire({icon: 'success', title: 'บันทึกสำเร็จ', timer: 1500, showConfirmButton: false, background: '#082f49', color: '#22d3ee'});
             
+            // ล้างข้อมูลฟอร์ม
+            orderSelectInstance.clear();
+            document.getElementById('id_step').innerHTML = `<option value="">-- กรุณาเลือกใบสั่งก่อน --</option>`;
             document.getElementById('start_date').valueAsDate = new Date();
             document.getElementById('end_date').valueAsDate = new Date();
+            document.getElementById('orderInfo').style.display = 'none';
 
             // อัปเดตตารางเรียลไทม์
             if (isTableLoaded) {
-                document.getElementById('filter_order').value = id_order;
+                filterSelectInstance.setValue(id_order, true);
                 await loadTableDataRaw();
                 renderTable();
             }
@@ -532,20 +575,20 @@
     }
 
     function triggerEdit(id_order, id_step, start_date, end_date) {
-        document.getElementById('id_order').value = id_order;
-        onOrderSelect();
+        document.getElementById('edit_mode').value = 'true';
+        
+        // เซ็ตค่าและปิดการแก้ไข Dropdown ในโหมด Edit
+        orderSelectInstance.setValue(id_order);
+        orderSelectInstance.disable();
         
         setTimeout(() => {
             document.getElementById('id_step').value = id_step;
+            document.getElementById('id_step').disabled = true;
         }, 150);
 
         document.getElementById('start_date').value = start_date;
         document.getElementById('end_date').value = end_date;
         
-        document.getElementById('id_order').disabled = true;
-        document.getElementById('id_step').disabled = true;
-        
-        document.getElementById('edit_mode').value = 'true';
         document.getElementById('btnSave').innerText = '[*] บันทึกการแก้ไข (UPDATE)';
         document.getElementById('btnSave').classList.replace('btn-cyan', 'btn-warning');
         document.getElementById('btnCancelEdit').style.display = 'block';
@@ -554,18 +597,21 @@
     }
 
     function cancelEdit() {
-        document.getElementById('id_order').disabled = false;
+        document.getElementById('edit_mode').value = 'false';
+        
+        orderSelectInstance.enable();
+        orderSelectInstance.clear();
+        
         document.getElementById('id_step').disabled = false;
         document.getElementById('planForm').reset();
+        
         document.getElementById('start_date').valueAsDate = new Date();
         document.getElementById('end_date').valueAsDate = new Date();
         
-        onOrderSelect();
-        
-        document.getElementById('edit_mode').value = 'false';
         document.getElementById('btnSave').innerText = '[+] บันทึกข้อมูล (SAVE)';
         document.getElementById('btnSave').classList.replace('btn-warning', 'btn-cyan');
         document.getElementById('btnCancelEdit').style.display = 'none';
+        document.getElementById('orderInfo').style.display = 'none';
     }
 
     async function deleteRecord(id_order, id_step) {
