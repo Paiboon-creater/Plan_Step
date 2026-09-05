@@ -97,35 +97,58 @@
         .form-label { color: var(--text-light-blue); font-weight: bold; font-size: 0.9rem; }
         
         .form-control-stock, .form-select-stock {
-            background-color: var(--input-bg);
-            border: 1px solid #0e7490;
-            color: var(--text-light-blue);
+            background-color: #0f172a; 
+            border: 1px solid #0ea5e9;
+            color: #fde047; 
+            font-weight: bold;
             border-radius: 6px;
             font-size: 1rem;
             padding: 10px;
         }
         .form-control-stock:focus, .form-select-stock:focus {
-            background-color: var(--input-bg);
-            color: var(--text-white);
-            border-color: var(--text-cyan);
+            background-color: #1e293b;
+            color: #00ff9d; 
+            border-color: #22d3ee;
             box-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
             outline: none;
         }
 
-        /* Custom Tom Select Dark Theme */
+        /* Custom Tom Select Dark Theme - ช่องกรองด้านล่าง */
         .ts-control, .ts-wrapper.single.input-active .ts-control {
-            background-color: var(--input-bg) !important;
-            border: 1px solid #0e7490 !important;
-            color: var(--text-light-blue) !important;
+            background-color: #0f172a !important; 
+            border: 1px solid #0ea5e9 !important;
             border-radius: 6px !important;
             padding: 10px !important;
         }
-        .ts-control > input { color: var(--text-white) !important; font-size: 1rem; }
-        .ts-dropdown { background-color: var(--input-bg) !important; border: 1px solid #0e7490 !important; color: var(--text-light-blue) !important; }
-        .ts-dropdown .option { padding: 8px 10px; }
-        .ts-dropdown .active { background-color: #0891b2 !important; color: white !important; }
-        .ts-control .item { color: var(--text-white) !important; }
+        .ts-control > input { color: #00ff9d !important; font-size: 1rem; font-weight: bold; }
+        .ts-control .item { color: #fde047 !important; font-weight: bold; }
+        .ts-dropdown { background-color: #0f172a !important; border: 1px solid #0ea5e9 !important; }
+        .ts-dropdown .option { padding: 10px; color: #f0f9ff !important; font-size: 0.95rem; }
+        .ts-dropdown .active, .ts-dropdown .option:hover { background-color: #0891b2 !important; color: #ffffff !important; font-weight: bold; }
         .ts-wrapper.disabled .ts-control { opacity: 0.6; cursor: not-allowed; }
+
+        /* ---- การตั้งค่าสีเฉพาะช่อง "เลขที่ใบสั่ง (Order No)" ดำ-เขียว ---- */
+        #order_box_target .ts-control,
+        #order_box_target .ts-wrapper.single.input-active .ts-control {
+            background-color: #000000 !important; /* พื้นหลังสีดำ */
+        }
+        #order_box_target .ts-control .item {
+            color: #00ff9d !important; /* ตัวหนังสือสีเขียวตอนเลือกแล้ว */
+        }
+        #order_box_target .ts-control > input {
+            color: #00ff9d !important; /* ตัวหนังสือสีเขียวตอนพิมพ์ค้นหา */
+        }
+        #order_box_target .ts-dropdown {
+            background-color: #000000 !important; /* พื้นหลังรายการที่กดลงมาสีดำ */
+        }
+        #order_box_target .ts-dropdown .option {
+            color: #00ff9d !important; /* ตัวหนังสือในรายการสีเขียว */
+        }
+        #order_box_target .ts-dropdown .active, 
+        #order_box_target .ts-dropdown .option:hover { 
+            background-color: #0891b2 !important; 
+            color: #ffffff !important; 
+        }
 
         .order-info-box {
             background-color: var(--input-bg);
@@ -192,7 +215,8 @@
             <input type="hidden" id="edit_mode" value="false">
             
             <div class="row">
-                <div class="col-md-6 mb-3">
+                <!-- ใส่ ID ให้กล่องนี้ เพื่อล็อกสีเฉพาะช่องนี้ -->
+                <div class="col-md-6 mb-3" id="order_box_target">
                     <label class="form-label">📝 เลขที่ใบสั่ง (Order No)</label>
                     <select id="id_order" class="form-select" required>
                         <option value="">-- โหลดข้อมูลใบสั่ง --</option>
